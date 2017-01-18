@@ -30,7 +30,11 @@ ENV TERM="xterm"
 #       But, the noninteractive frontend has no requirements but it does not ask any questions
 #        see: http://www.gnu.org/software/bash/manual/bashref.html#The-Set-Builtin
 #       (which may or may not be what you want).
-#       Suggested packages: packages that will be very useful; feel free to ommit the
+#       Suggested packages: packages that will be very useful; feel free to ommit
+#       Remove list of packages, unnecesary:
+#           rm -rf /var/lib/apt/lists/*
+#       # Remove unnecesary packages:
+#           apt-get purge -y --auto-remove apt-utils ca-certificates
 
 RUN set -x \
 	&& apt-get update \
@@ -44,15 +48,16 @@ RUN set -x \
     && dpkg-reconfigure -f noninteractive tzdata \
     && echo "=> Configuring and installing locale (${LOCALE_LANG_COUNTRY}.${LOCALE_CODIFICATION}):" \
     && apt-get install -y locales \
+    && localedef -i ${LOCALE_LANG_COUNTRY} -c -f ${LOCALE_CODIFICATION} -A /usr/share/locale/locale.alias ${LOCALE_LANG_COUNTRY}.${LOCALE_CODIFICATION} \
     && rm -rf /var/lib/apt/lists/* \
-    && localedef -i ${LOCALE_LANG_COUNTRY} -c -f ${LOCALE_CODIFICATION} -A /usr/share/locale/locale.alias ${LOCALE_LANG_COUNTRY}.${LOCALE_CODIFICATION}
+    && apt-get purge -y --auto-remove apt-utils
 
 # Set enviroment variables:
 
 ENV LANG=${LOCALE_LANG_COUNTRY}.${LOCALE_CODIFICATION_ENV}
 
 RUN groupadd --gid 1000 node \
-  && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
+    && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
 
 # gpg keys listed at https://github.com/nodejs/node
 RUN set -ex \
@@ -70,14 +75,22 @@ RUN set -ex \
     done
 
 ENV NPM_CONFIG_LOGLEVEL info
+# Latest node version (20170118):
 ENV NODE_VERSION 7.4.0
 
-RUN curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz" \
-  && curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
-  && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
-  && grep " node-v$NODE_VERSION-linux-x64.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
-  && tar -xJf "node-v$NODE_VERSION-linux-x64.tar.xz" -C /usr/local --strip-components=1 \
-  && rm "node-v$NODE_VERSION-linux-x64.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
-  && ln -s /usr/local/bin/node /usr/local/bin/nodejs
+# Install Node.js download binaries (for x64 bits)
+# Note:
+#   Remove unnecesary packages:
+#       apt-get purge -y --auto-remove curl xz-utils
+
+RUN set -x \
+	&& curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz" \
+    && curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
+    && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
+    && grep " node-v$NODE_VERSION-linux-x64.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
+    && tar -xJf "node-v$NODE_VERSION-linux-x64.tar.xz" -C /usr/local --strip-components=1 \
+    && rm "node-v$NODE_VERSION-linux-x64.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
+    && ln -s /usr/local/bin/node /usr/local/bin/nodejs \
+    && apt-get purge -y --auto-remove curl xz-utils ca-certificates
 
 CMD [ "node" ]

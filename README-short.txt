@@ -1,1 +1,1 @@
-Docker Image for PostgreSQL object-relational database, with support for locale and timezone, before build the image. 
+Node.js Minimum Debian Based Image with locale and timezone support.
